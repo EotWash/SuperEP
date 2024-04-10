@@ -187,7 +187,7 @@ for f=1:length(files(:,1))
         % Cut data
         cut = torqFilt(index*cutSize+1:(index+1)*cutSize+1);    
         cutTim = timFilt(index*cutSize+1:(index+1)*cutSize+1);
-        cutICH = detrend(ICHFilt(index*cutSize+1:(index+1)*cutSize+1));
+        cutICH = ICHFilt(index*cutSize+1:(index+1)*cutSize+1);
         
         % Temperature correction
         cutCor = cut - tempCoup*cutICH;
