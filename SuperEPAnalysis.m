@@ -38,7 +38,9 @@ Rsun = 149.6e9; % Radius from earth to sun (m)
 
 ag = G*Msun/Rsun^2; % Acceleration towards sun (m/s^2)
 
-CP = ((0.511/938.272)*41/93*1/41*0.05); %Cooper pair mass fraction (me/mn Ne/Nn Nv/Ne fCp);
+CP = ((0.511/938.272)*41/93*1/41*0.05); % Cooper pair mass fraction (me/mn Ne/Nn Nv/Ne fCp);
+
+tempCoup = 4.6086e-11; % Inner cold-head temperature coupling (N m/K)
 
 %%
 
@@ -51,25 +53,54 @@ fitTime = [];
 
 % Long vector creation for plotting
 longTorq = [];
+longICH = [];
 longTim = [];
 longFit = [];
 
 % Loop through all files
-for f=1:length(files(:,1))
+% for f=1:length(files(:,1))
+for f =1
 
     % Load data
-    data = load(files(f,:));    
+    data = load(files(f,:));
+    envData = load(envFiles(f,:)); 
 
     % Parse data files into channels
     inTim = data(:,1)*3600*24; % Time vector (s)
     inDiff = data(:,2)*acCalib; % Angle vector (rad)
+    inETim = envData(:,1); % Environmental time vector (s)
+    inTiltX = envData(:,2); % Tilt-X (rad)
+    inTiltY = envData(:,3); % Tilt-Y (rad) 
+    inICH = envData(:,4); % Inner cold head temperature (K) 
+    inISh = envData(:,5); % Inner shield temperature (K) 
+    inOCH = envData(:,6); % Outer cold head temperature (K) 
+    inOSh = envData(:,7); % Outer shield temperature (K) 
+    inFlange = 3.57*envData(:,8)+40+273.15; % Top flange temperature (K)
+    inWT = envData(:,9); % Water temp
+    inWP = envData(:,10); % Water pressure
+    inMagX = envData(:,11); % Magnetic field X
+    inMagY = envData(:,12); % Magnetic field 
+    inETim = inETim + inTim(1); % Add start time
+    
     
     % Calculate initial sampling frequency
     isampF = round(1/(inTim(3)-inTim(2)));
-    
+    esampF = round(1/(inETim(2)-inETim(1)));
+
     % Decimate data
     inTim = decimate(inTim,isampF/decRate);
     inDiff = decimate(inDiff,isampF/decRate);
+    inTiltX = decimate(inTiltX,esampF/decRate);
+    inTiltY = decimate(inTiltY,esampF/decRate);
+    inICH = decimate(inICH,esampF/decRate);
+    inOCH = decimate(inOCH,esampF/decRate);
+    inOSh = decimate(inOSh,esampF/decRate);
+    inISh = decimate(inISh,esampF/decRate);
+    inWP = decimate(inWP,esampF/decRate);
+    inWT = decimate(inWT,esampF/decRate);
+    inMagX = decimate(inMagX,esampF/decRate);
+    inMagY = decimate(inMagY,esampF/decRate);
+    inFlange = decimate(inFlange,esampF/decRate);
     
     % Reset sampling frequency to decimated rate
     sampF = decRate;
@@ -80,6 +111,17 @@ for f=1:length(files(:,1))
 
     tim = inTim(startTim:endTim);
     ang = inDiff(startTim:endTim);
+    tiltX = inTiltX(startTim:endTim);
+    tiltY = inTiltY(startTim:endTim);
+    ICH = inICH(startTim:endTim);
+    ISh = inISh(startTim:endTim);
+    OCH = inOCH(startTim:endTim);
+    OSh = inOSh(startTim:endTim);
+    WP = inWP(startTim:endTim);
+    WT = inWT(startTim:endTim);
+    magX = inMagX(startTim:endTim);
+    magY = inMagY(startTim:endTim);
+    flange = inFlange(startTim:endTim);
     %% Torque Calculations
 
     % Calculate torque
@@ -95,19 +137,44 @@ for f=1:length(files(:,1))
     % Low pass filter to remove resonance and high frequency noise
     [b,a] = butter(2,2*1e-4/sampF,'low');
     torqFilt = filter(b,a,torq);
+    tXFilt = filter(b,a,tiltX);
+    tYFilt = filter(b,a,tiltY);
+    ICHFilt = filter(b,a,ICH);
+    IShFilt = filter(b,a,ISh);
+    OCHFilt = filter(b,a,OCH);
+    OShFilt = filter(b,a,OSh);
+    WPFilt = filter(b,a,WP);
+    WTFilt = filter(b,a,WT);
+    magXFilt = filter(b,a,magX);
+    magYFilt = filter(b,a,magY);
+    flFilt = filter(b,a,flange);
 
     % Trim data to remove filter step response
     trim = floor(2e4*sampF);
     torqFilt = torqFilt(trim:end);
-    timFilt = tim(trim:end);
+    timFilt = tim(trim:end); 
+    tXFilt = tXFilt(trim:end);
+    tYFilt = tYFilt(trim:end);
+    ICHFilt =ICHFilt(trim:end);
+    IShFilt = IShFilt(trim:end);
+    OCHFilt = OCHFilt(trim:end);
+    OShFilt = OShFilt(trim:end);
+    WPFilt = WPFilt(trim:end);
+    WTFilt = WTFilt(trim:end);
+    magXFilt = magXFilt(trim:end);
+    magYFilt = magYFilt(trim:end);
+    flFilt = flFilt(trim:end);
 
     % Drift fitting to third order polynomial
     X = [0*timFilt+1 timFilt timFilt.^2 timFilt.^3];
     wt = inv(X'*X)*X'*(torqFilt);
+    w = inv(X'*X)*X'*(ICHFilt);
 
     % Drift subtraction and vector reshaping
     torqFilt = torqFilt'-wt'*X';
     torqFilt = torqFilt';
+    ICHFilt = ICHFilt'-w'*X';
+    ICHFilt = ICHFilt';
 
     %% Daily Torque Fits
 
@@ -121,6 +188,11 @@ for f=1:length(files(:,1))
         % Cut data
         cut = torqFilt(index*cutSize+1:(index+1)*cutSize+1);    
         cutTim = timFilt(index*cutSize+1:(index+1)*cutSize+1);
+        cutICH = ICHFilt(index*cutSize+1:(index+1)*cutSize+1);
+        
+        % Temperature correction
+        cutCor = cut - tempCoup*cutICH;
+%         cutCor = cut;
 
         % Sync basis function and data 
         [sunMin,sunIndex]=min(abs(timSun-cutTim(1)/3600/24));
@@ -128,10 +200,10 @@ for f=1:length(files(:,1))
         % Linear least squares fitting to basis functions and offset
         X = [inSun(sunIndex:sunIndex+length(cutTim)-1) outSun(sunIndex:sunIndex+length(cutTim)-1)...
             ones(length(cut),1)];    
-        w = inv(X'*X)*X'*cut;
+        w = inv(X'*X)*X'*cutCor;
 
         % Uncertainty calculation from residuals
-        u = std(cut'-w'*X');
+        u = std(cutCor'-w'*X');
 
         % Vector appending
         inPhase = [inPhase w(1)];
@@ -139,15 +211,19 @@ for f=1:length(files(:,1))
         unc = [unc u];
         penPhase = [penPhase phse(f)];
         fitTime = [fitTime mean(cutTim)];
-        longTorq = [longTorq; cut];
+        longTorq = [longTorq; cutCor];
+        longICH = [longICH; cutICH];
         longTim = [longTim; cutTim];
         longFit = [longFit w'*X'];
+        
+        % Add NaNs to plot gaps instead of lines between data sets
+        longTorq = [longTorq; NaN];
+        longICH = [longICH; NaN];
+        longTim = [longTim; cutTim(end)];
+        longFit = [longFit NaN];
 
     end
-    % Add NaNs to plot gaps instead of lines between data sets
-    longTorq = [longTorq; NaN];
-    longTim = [longTim; cutTim(end)];
-    longFit = [longFit NaN];
+
 
 end
 %%
@@ -191,12 +267,13 @@ set(gcf, 'Position',  [50, 150, 900, 700])
 % Time series of torque, fit, and in-phase function in arb. units
 figure(2)
 subplot(4,1,[1 3])
-l=plot((longTim-longTim(1))/3600/24,1e12*(longTorq),(longTim-longTim(1))/3600/24,1e12*(longFit),timSun-timSun(1), 0.2*inSun);
-legend('Observed Torque','Fit','In-Phase Function','Interpreter', 'latex','Location','southeast')
+l=plot((longTim-longTim(1))/3600/24,1e12*(longTorq),(longTim-longTim(1))/3600/24,1e12*(longFit),timSun-timSun(1), 0.2*inSun, ...
+    (longTim-longTim(1))/3600/24,1e12*tempCoup*(longICH),(longTim-longTim(1))/3600/24,1e12*(longTorq+tempCoup*(longICH)));
+legend('Observed Torque','Fit','In-Phase Function','Cold Head Temp', 'Raw Torque','Interpreter', 'latex','Location','southeast')
 grid on
 ylabel('Torque (pNm)','Interpreter', 'latex')
 xlim([0 12])
-ylim([-1 1])
+% ylim([-1 1])
 set(gca,'FontSize',16);
 set(l,'LineWidth',1.5);
 set(gca,'xticklabel',[])
@@ -218,7 +295,43 @@ labels(1:2:end) = nan;
 ax.XAxis.TickLabels = labels; 
 set(gcf, 'Position',  [50, 100, 1500, 700])
 
+%%
 
+sig = flFilt;
+
+X = [0*timFilt+1 timFilt timFilt.^2 timFilt.^3];
+wt = inv(X'*X)*X'*(sig);
+
+OShCoup = -6.5018e-13;
+
+sigF = sig'-wt'*X';
+% sigF = sig-mean(sig);
+torqFiltF = torqFilt'-tempCoup*ICHFilt'-OShCoup*OShFilt';
+torqFiltF=torqFiltF-mean(torqFiltF);
+% torqFiltF = torqFilt'-mean(torqFilt);
+
+Xcoup = [sigF' 0*sigF'+1];
+wcoup = inv(Xcoup'*Xcoup)*Xcoup'*(torqFiltF');
+
+figure(22)
+plot(1e3*sigF,1e12*torqFiltF, 1e3*sigF,1e12*wcoup'*Xcoup','.','MarkerSize',16,'LineWidth',1.5)
+ylabel('Torque (pNm)','Interpreter', 'latex')
+grid on
+xlabel('Systematic','Interpreter', 'latex')
+% legend('Data',['Fit Slope ' num2str(wcoup*1e12/1e3) ' pNm/mK'],'Interpreter', 'latex')
+% xlim([0 33])
+% ylim([-300 300])
+set(gca,'FontSize',16);
+
+figure(23)
+plot(timFilt/24/3600,1e12*torqFiltF,timFilt/24/3600, 1e12*wcoup(1)*sigF,'MarkerSize',16,'LineWidth',1.5)
+xlabel('Time (days)','Interpreter', 'latex')
+grid on
+ylabel('Torque (pNm)','Interpreter', 'latex')
+legend('Torque','Systematic','Interpreter', 'latex')
+% xlim([0 33])
+% ylim([-300 300])
+set(gca,'FontSize',16);
 %% Print figures
 
 if(false)
