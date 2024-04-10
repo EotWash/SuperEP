@@ -58,8 +58,7 @@ longTim = [];
 longFit = [];
 
 % Loop through all files
-% for f=1:length(files(:,1))
-for f =1
+for f=1:length(files(:,1))
 
     % Load data
     data = load(files(f,:));
@@ -188,7 +187,7 @@ for f =1
         % Cut data
         cut = torqFilt(index*cutSize+1:(index+1)*cutSize+1);    
         cutTim = timFilt(index*cutSize+1:(index+1)*cutSize+1);
-        cutICH = ICHFilt(index*cutSize+1:(index+1)*cutSize+1);
+        cutICH = detrend(ICHFilt(index*cutSize+1:(index+1)*cutSize+1));
         
         % Temperature correction
         cutCor = cut - tempCoup*cutICH;
@@ -267,13 +266,12 @@ set(gcf, 'Position',  [50, 150, 900, 700])
 % Time series of torque, fit, and in-phase function in arb. units
 figure(2)
 subplot(4,1,[1 3])
-l=plot((longTim-longTim(1))/3600/24,1e12*(longTorq),(longTim-longTim(1))/3600/24,1e12*(longFit),timSun-timSun(1), 0.2*inSun, ...
-    (longTim-longTim(1))/3600/24,1e12*tempCoup*(longICH),(longTim-longTim(1))/3600/24,1e12*(longTorq+tempCoup*(longICH)));
+l=plot((longTim-longTim(1))/3600/24,1e12*(longTorq),(longTim-longTim(1))/3600/24,1e12*(longFit),timSun-timSun(1), 0.2*inSun);
 legend('Observed Torque','Fit','In-Phase Function','Cold Head Temp', 'Raw Torque','Interpreter', 'latex','Location','southeast')
 grid on
 ylabel('Torque (pNm)','Interpreter', 'latex')
 xlim([0 12])
-% ylim([-1 1])
+ylim([-0.5 0.5])
 set(gca,'FontSize',16);
 set(l,'LineWidth',1.5);
 set(gca,'xticklabel',[])
@@ -295,43 +293,7 @@ labels(1:2:end) = nan;
 ax.XAxis.TickLabels = labels; 
 set(gcf, 'Position',  [50, 100, 1500, 700])
 
-%%
 
-sig = flFilt;
-
-X = [0*timFilt+1 timFilt timFilt.^2 timFilt.^3];
-wt = inv(X'*X)*X'*(sig);
-
-OShCoup = -6.5018e-13;
-
-sigF = sig'-wt'*X';
-% sigF = sig-mean(sig);
-torqFiltF = torqFilt'-tempCoup*ICHFilt'-OShCoup*OShFilt';
-torqFiltF=torqFiltF-mean(torqFiltF);
-% torqFiltF = torqFilt'-mean(torqFilt);
-
-Xcoup = [sigF' 0*sigF'+1];
-wcoup = inv(Xcoup'*Xcoup)*Xcoup'*(torqFiltF');
-
-figure(22)
-plot(1e3*sigF,1e12*torqFiltF, 1e3*sigF,1e12*wcoup'*Xcoup','.','MarkerSize',16,'LineWidth',1.5)
-ylabel('Torque (pNm)','Interpreter', 'latex')
-grid on
-xlabel('Systematic','Interpreter', 'latex')
-% legend('Data',['Fit Slope ' num2str(wcoup*1e12/1e3) ' pNm/mK'],'Interpreter', 'latex')
-% xlim([0 33])
-% ylim([-300 300])
-set(gca,'FontSize',16);
-
-figure(23)
-plot(timFilt/24/3600,1e12*torqFiltF,timFilt/24/3600, 1e12*wcoup(1)*sigF,'MarkerSize',16,'LineWidth',1.5)
-xlabel('Time (days)','Interpreter', 'latex')
-grid on
-ylabel('Torque (pNm)','Interpreter', 'latex')
-legend('Torque','Systematic','Interpreter', 'latex')
-% xlim([0 33])
-% ylim([-300 300])
-set(gca,'FontSize',16);
 %% Print figures
 
 if(false)
