@@ -11,9 +11,9 @@ inSun=detrend(rawSun(:,2),'linear');
 outSun=detrend(rawSun(:,3),'linear');
 
 % File paths and pendulum orientations
-files = ['Science Data\CW_2024_86a.dat'; 'Science Data\CW_2024_92b.dat'];
-envFiles = ['Science Data\CW_Env_24-03-26_1118.lvm'; 'Science Data\CW_Env_24-04-01_1526.lvm'];
-phse = [1 -1]; % +1 is 0 degress, -1 is 180 degrees from starting position
+files = ['Science Data\CW_2024_86a.dat'; 'Science Data\CW_2024_92b.dat'; 'Science Data\CW_2024_99a.dat'];
+envFiles = ['Science Data\CW_Env_24-03-26_1118.lvm'; 'Science Data\CW_Env_24-04-01_1526.lvm'; 'Science Data\CW_Env_24-04-08_1312.lvm'];
+phse = [1 -1 1]; % +1 is 0 degress, -1 is 180 degrees from starting position
 
 %%
 
@@ -253,8 +253,10 @@ figure(1)
 errorbar((fitTime-fitTime(1))/3600/24, 1e15*inPhase,1e15*unc,'.','MarkerSize',16,'LineWidth',1.5)
 hold on
 plot([5.5 5.5], [-250 250],'k--','LineWidth',1.5)
+plot([12 12], [-250 250],'k--','LineWidth',1.5)
 text(2.5,-175, '$0^{\circ}$','Interpreter', 'latex','FontSize',20)
 text(8.5,-175, '$180^{\circ}$','Interpreter', 'latex','FontSize',20)
+text(16,-175, '$0^{\circ}$','Interpreter', 'latex','FontSize',20)
 hold off
 ylabel('Torque (fNm)','Interpreter', 'latex')
 grid on
@@ -270,19 +272,19 @@ l=plot((longTim-longTim(1))/3600/24,1e12*(longTorq),(longTim-longTim(1))/3600/24
 legend('Observed Torque','Fit','In-Phase Function','Cold Head Temp', 'Raw Torque','Interpreter', 'latex','Location','southeast')
 grid on
 ylabel('Torque (pNm)','Interpreter', 'latex')
-xlim([0 12])
+xlim([0 20])
 ylim([-0.5 0.5])
 set(gca,'FontSize',16);
 set(l,'LineWidth',1.5);
 set(gca,'xticklabel',[])
-set(gca,'xtick',linspace(1,12,12))
+set(gca,'xtick',linspace(1,20,20))
 subplot(4,1,4)
 l=plot((longTim-longTim(1))/3600/24,1e12*(longTorq-longFit'));
 legend('off')
 grid on
 ylabel('Residual (pNm)','Interpreter', 'latex')
 xlabel('Time (Days)','Interpreter', 'latex')
-xlim([0 12])
+xlim([0 20])
 ylim([-0.4 0.4])
 set(gca,'FontSize',16);
 set(l,'LineWidth',1.5);
