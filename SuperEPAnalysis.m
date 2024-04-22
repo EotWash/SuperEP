@@ -11,9 +11,10 @@ inSun=detrend(rawSun(:,2),'linear');
 outSun=detrend(rawSun(:,3),'linear');
 
 % File paths and pendulum orientations
-files = ['Science Data\CW_2024_86a.dat'; 'Science Data\CW_2024_92b.dat'; 'Science Data\CW_2024_99a.dat'];
-envFiles = ['Science Data\CW_Env_24-03-26_1118.lvm'; 'Science Data\CW_Env_24-04-01_1526.lvm'; 'Science Data\CW_Env_24-04-08_1312.lvm'];
-phse = [1 -1 1]; % +1 is 0 degress, -1 is 180 degrees from starting position
+files = ["Science Data\CW_2024_86a.dat" "Science Data\CW_2024_92b.dat" "Science Data\CW_2024_99a.dat" "Science Data\CW_2024_108a.dat"];
+envFiles = ["Science Data\CW_Env_24-03-26_1118.lvm" "Science Data\CW_Env_24-04-01_1526.lvm" ...
+    "Science Data\CW_Env_24-04-08_1312.lvm" "Science Data\CW_Env_24-04-17_1135.lvm"];
+phse = [1 -1 1 -1]; % +1 is 0 degress, -1 is 180 degrees from starting position
 
 %%
 
@@ -58,11 +59,11 @@ longTim = [];
 longFit = [];
 
 % Loop through all files
-for f=1:length(files(:,1))
+for f=1:length(files)
 
     % Load data
-    data = load(files(f,:));
-    envData = load(envFiles(f,:)); 
+    data = load(files(f));
+    envData = load(envFiles(f)); 
 
     % Parse data files into channels
     inTim = data(:,1)*3600*24; % Time vector (s)
@@ -243,10 +244,13 @@ etaCPErr= etaErr/CP;
 
 % Display results
 disp(['Torque: ' num2str(mu*1e15) ' +- ' num2str(muErr*1e15)])
+disp(['Torque Out: ' num2str(muOut*1e15) ' +- ' num2str(muErr*1e15)])
 disp([' '])
 disp(['Eta: ' num2str(etaErr*2)])
 disp(['EtaCP: ' num2str(etaCPErr*2)])
 %% Figures
+
+Nday = floor(1.05*(longTim(end)-longTim(1))/24/3600);
 
 % In-phase fits vs time
 figure(1)
@@ -254,14 +258,17 @@ errorbar((fitTime-fitTime(1))/3600/24, 1e15*inPhase,1e15*unc,'.','MarkerSize',16
 hold on
 plot([5.5 5.5], [-250 250],'k--','LineWidth',1.5)
 plot([12 12], [-250 250],'k--','LineWidth',1.5)
+plot([21 21], [-250 250],'k--','LineWidth',1.5)
 text(2.5,-175, '$0^{\circ}$','Interpreter', 'latex','FontSize',20)
 text(8.5,-175, '$180^{\circ}$','Interpreter', 'latex','FontSize',20)
 text(16,-175, '$0^{\circ}$','Interpreter', 'latex','FontSize',20)
+text(23,-175, '$180^{\circ}$','Interpreter', 'latex','FontSize',20)
 hold off
 ylabel('Torque (fNm)','Interpreter', 'latex')
 grid on
 xlabel('Time (Days)','Interpreter', 'latex')
 ylim([-250 250])
+xlim([-1 Nday])
 set(gca,'FontSize',16);
 set(gcf, 'Position',  [50, 150, 900, 700])
 
@@ -272,26 +279,26 @@ l=plot((longTim-longTim(1))/3600/24,1e12*(longTorq),(longTim-longTim(1))/3600/24
 legend('Observed Torque','Fit','In-Phase Function','Cold Head Temp', 'Raw Torque','Interpreter', 'latex','Location','southeast')
 grid on
 ylabel('Torque (pNm)','Interpreter', 'latex')
-xlim([0 20])
+xlim([-1 Nday])
 ylim([-0.5 0.5])
 set(gca,'FontSize',16);
 set(l,'LineWidth',1.5);
 set(gca,'xticklabel',[])
-set(gca,'xtick',linspace(1,20,20))
+set(gca,'xtick',linspace(0,Nday,Nday+1))
 subplot(4,1,4)
 l=plot((longTim-longTim(1))/3600/24,1e12*(longTorq-longFit'));
 legend('off')
 grid on
 ylabel('Residual (pNm)','Interpreter', 'latex')
 xlabel('Time (Days)','Interpreter', 'latex')
-xlim([0 20])
+xlim([-1 Nday])
 ylim([-0.4 0.4])
 set(gca,'FontSize',16);
 set(l,'LineWidth',1.5);
-set(gca,'xtick',linspace(1,12,12))
+set(gca,'xtick',linspace(0,Nday,Nday+1))
 ax = gca;
 labels = string(ax.XAxis.TickLabels); 
-labels(1:2:end) = nan; 
+labels(2:2:end) = nan; 
 ax.XAxis.TickLabels = labels; 
 set(gcf, 'Position',  [50, 100, 1500, 700])
 
