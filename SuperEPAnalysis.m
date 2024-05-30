@@ -31,7 +31,7 @@ fDay = 1/(3600*24); % Once per day frequency (Hz)
 decRate = 1/60; % Decimate rate (Hz)
 
 m = 37.92e-3; % Pendulum masses (kg)
-r = 3.22e-2; % Pendulum radius (m)
+r = 2.27e-2; % Pendulum radius (m)
 
 Msun = 1.9891e30; % Mass of sun (kg)
 G = 6.67430e-11; % Gravitational constant (m^3/kg/s^2)
@@ -42,6 +42,8 @@ ag = G*Msun/Rsun^2; % Acceleration towards sun (m/s^2)
 CP = ((0.511/938.272)*41/93*1/41*0.05); % Cooper pair mass fraction (me/mn Ne/Nn Nv/Ne fCp);
 
 tempCoup = 4.6086e-11; % Inner cold-head temperature coupling (N m/K)
+txCoup = -0.62704*kappa; % Tilt-X coupling (N m/rad)
+tyCoup = 0.40461*kappa; % Tilt-Y coupling (N m/rad)
 
 %%
 
@@ -169,12 +171,19 @@ for f=1:length(files)
     X = [0*timFilt+1 timFilt timFilt.^2 timFilt.^3];
     wt = inv(X'*X)*X'*(torqFilt);
     w = inv(X'*X)*X'*(ICHFilt);
+    wx = inv(X'*X)*X'*(tXFilt);
+    wy = inv(X'*X)*X'*(tYFilt);
 
     % Drift subtraction and vector reshaping
     torqFilt = torqFilt'-wt'*X';
-    torqFilt = torqFilt';
+    torqFilt = torqFilt'-mean(torqFilt);
     ICHFilt = ICHFilt'-w'*X';
     ICHFilt = ICHFilt';
+    tXFilt = tXFilt'-wx'*X';
+    tXFilt = tXFilt';
+    tYFilt = tYFilt'-wy'*X';
+    tYFilt = tYFilt';
+
 
     %% Daily Torque Fits
 
@@ -189,9 +198,11 @@ for f=1:length(files)
         cut = torqFilt(index*cutSize+1:(index+1)*cutSize+1);    
         cutTim = timFilt(index*cutSize+1:(index+1)*cutSize+1);
         cutICH = ICHFilt(index*cutSize+1:(index+1)*cutSize+1);
+        cutTX = tXFilt(index*cutSize+1:(index+1)*cutSize+1);
+        cutTY = tYFilt(index*cutSize+1:(index+1)*cutSize+1);
         
         % Temperature correction
-        cutCor = cut - tempCoup*cutICH;
+        cutCor = cut - tempCoup*cutICH -txCoup*cutTX -tyCoup*cutTY;
 %         cutCor = cut;
 
         % Sync basis function and data 
@@ -285,6 +296,7 @@ set(gca,'FontSize',16);
 set(l,'LineWidth',1.5);
 set(gca,'xticklabel',[])
 set(gca,'xtick',linspace(0,Nday,Nday+1))
+set(gca,'ytick',linspace(-0.5,0.5,9))
 subplot(4,1,4)
 l=plot((longTim-longTim(1))/3600/24,1e12*(longTorq-longFit'));
 legend('off')
@@ -292,7 +304,7 @@ grid on
 ylabel('Residual (pNm)','Interpreter', 'latex')
 xlabel('Time (Days)','Interpreter', 'latex')
 xlim([-1 Nday])
-ylim([-0.4 0.4])
+ylim([-0.41 0.41])
 set(gca,'FontSize',16);
 set(l,'LineWidth',1.5);
 set(gca,'xtick',linspace(0,Nday,Nday+1))
@@ -305,7 +317,7 @@ set(gcf, 'Position',  [50, 100, 1500, 700])
 
 %% Print figures
 
-if(false)
+if(true)
     fig2=figure(1);
     set(fig2,'Units','Inches');
     pos = get(fig2,'Position');
